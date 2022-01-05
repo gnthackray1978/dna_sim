@@ -13,6 +13,8 @@ namespace dna_sim
         public int value { get; set; }
         public string Origin { get; set; }
 
+        public string Sex { get; set; }
+
         public List<string> holderHistory { get; set; }
 
     }
@@ -34,14 +36,14 @@ namespace dna_sim
             int idx = 0;
             while (idx < size)
             {
-                Paternal.Add(new dna(origin) { value = rg.Next(1, 100) });
+                Paternal.Add(new dna(origin) { value = rg.Next(1, 100) , Sex = "P"});
                 idx++;
             }
 
             idx = 0;
             while (idx < size)
             {
-                Maternal.Add(new dna(origin) { value = rg.Next(1, 100) });
+                Maternal.Add(new dna(origin) { value = rg.Next(1, 100), Sex = "M" });
                 idx++;
             }
 
@@ -51,93 +53,57 @@ namespace dna_sim
         public List<dna> Combined() {
 
             var r = new Random();
+            int chrLength = Paternal.Count;
 
-            int position = 0;
+            int positionInChr = 0;
 
             int maxSize = 40;
             int minSize = 20;
 
-            List<List<dna>> results = new List<List<dna>>();
-            List<int> positionList = new List<int>();
+            List<int> chunkList = new List<int>();
 
-            while (position < Paternal.Count)
+            while (positionInChr < chrLength)
             {
-                int first = minSize;
+                
                 //recombination initially can start from position zero
                 
-                int availableSpace = (Paternal.Count - position);
+                int availableSpace = (chrLength - positionInChr);
 
-                //problem is we dont want to end up with tiny chunks!!! 
-
+                
                 if (availableSpace >= minSize)
                 {
-                    //
+                    int chrIndex = 0;
 
-                    if(availableSpace > maxSize)
-                        first = r.Next(minSize, maxSize);
+                    if (availableSpace > maxSize)
+                        chrIndex = r.Next(minSize, maxSize);
                     else
-                        first = r.Next(minSize, availableSpace);
-
-
-
-                    if (first > maxSize)
+                        chrIndex = r.Next(minSize, availableSpace);
+                   
+                    if (positionInChr >= (chrLength - minSize))
                     {
-                        
-                        first = maxSize;
+                        chrIndex = chrLength - positionInChr;
                     }
+                  
+                    chunkList.Add(chrIndex);
 
-                    //  if (minSize > rand) rand = minSize;
-
-
-
-                    List<dna> result = new List<dna>();
-                    //tracker = position.
-
-                    if (position >= (Paternal.Count - minSize))
-                    {
-                        result = Paternal.Skip(position).ToList();
-                    }
-                    else
-                    {
-
-                        result = Paternal.Skip(position).Take(first).ToList();
-                    }
-
-                    
-
-                    results.Add(result);
-
-                    positionList.Add(result.Count);
-
-                    //if (positionList.Count > 2)
-                   //     Console.WriteLine("normal distribution: " + positionList[0] + " " + positionList[1]);
-
-                    position += first;
+                    positionInChr += chrIndex;
                 }
                 else
                 {
                     //if the available space left is less than the minimum size
                     //then redistribute it equally between the chunkS!!!!!!!!!!
+                     
+                    int partsCount = chunkList.Count;
 
-                    int sum = positionList.Sum();
-                    int partsCount = positionList.Count;
-
-                    int offset = Paternal.Count - sum;
+                    int offset = chrLength - chunkList.Sum();
 
                     int rem = offset % partsCount;
 
+                    int chunkAddition = (offset - rem) / partsCount;
 
+                    chunkList = chunkList.Select(s => s + chunkAddition).ToList();
 
-                    offset = offset - rem;
-
-                    int chunkAddition = offset / partsCount;
-
-                    positionList = positionList.Select(s => s + chunkAddition).ToList();
-
-                    positionList[0] += rem;
-
-                       
-
+                    chunkList[0] += rem;
 
                     break;
                 }
@@ -146,8 +112,28 @@ namespace dna_sim
                 
             }
 
-            Console.WriteLine(positionList.Count + " " + string.Join(' ', positionList));
-            return new List<dna>();
+
+            var newChromosome = new List<dna>();
+
+            positionInChr = 0;
+            bool isPaternal = false;
+            foreach (var chunk in chunkList) {
+                List<dna> newPart = new List<dna>();
+                
+                if(isPaternal)
+                    newPart = Paternal.Skip(positionInChr).Take(chunk).ToList();
+                else
+                    newPart = Maternal.Skip(positionInChr).Take(chunk).ToList();
+
+                isPaternal = !isPaternal;
+
+                newChromosome.AddRange(newPart);
+                positionInChr = chunk;
+            }
+
+
+            //Console.WriteLine(chunkList.Count + " " + string.Join(' ', chunkList));
+            return newChromosome;
         }
     }
 
@@ -179,18 +165,26 @@ namespace dna_sim
         {
             var john = new Person("John");
 
-            //var sarah = new Person("Sarah");
+            var sarah = new Person("Sarah");
 
-            //var child = sarah.CreateChild(john);
+            var js_child = sarah.CreateChild(john);
 
-            int idx = 0;
 
-            while (idx < 2000)
+
+            var albert = new Person("Albert");
+
+            var victoria = new Person("Victoria");
+            
+            var av_child = victoria.CreateChild(albert);
+
+
+
+            var js_av_gchild = av_child.CreateChild(js_child);
+
+            foreach (var dna in js_av_gchild.One.Maternal)
             {
-                john.One.Combined();
-                idx++;
+                Console.WriteLine(dna.Origin);
             }
-           
 
             Console.WriteLine("Hello World!");
         }
